@@ -1,1 +1,62 @@
+import random
+import string
 
+import sqlite3
+
+# Function to connect to the database
+def get_used_social_ids():
+    # Connect to the SQLite database (or create it if it doesn't exist)
+    conn = sqlite3.connect('social_id_database.db')
+    cursor = conn.cursor()
+
+    # Ensure the table exists
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS social_ids (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            social_id TEXT UNIQUE NOT NULL
+        )
+    ''')
+
+    # Fetch all social IDs from the table
+    cursor.execute('SELECT social_id FROM social_ids')
+    result = cursor.fetchall()
+
+    # Close the connection
+    conn.close()
+
+    # Convert the result into a set of IDs
+    return {row[0] for row in result}
+
+# Fetch used social IDs from the database
+used_social_ids = get_used_social_ids()
+
+print(f"Used Social IDs: {used_social_ids}")
+
+def add_social_id(social_id):
+    conn = sqlite3.connect('social_id_database.db')
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute('INSERT INTO social_ids (social_id) VALUES (?)', (social_id,))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        print(f"Social ID {social_id} already exists in the database.")
+    finally:
+        conn.close()
+
+def generate_social_id(used_ids):
+    """Generate a 7-character social ID that is not currently in use."""
+    while True:
+        # Generate a random 7-character ID (letters and numbers)
+        new_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=7))
+        # Check if it's not already in use
+        if new_id not in used_ids:
+            return new_id
+
+# Example usage
+if __name__ == "__main__":
+    for _ in range(10):  # Generate 10 unique IDs
+        new_social_id = generate_social_id(used_social_ids)
+        print("Generated Social ID:", new_social_id)
+        # Add the new ID to the used pool to avoid reuse
+        used_social_ids.add(new_social_id)
